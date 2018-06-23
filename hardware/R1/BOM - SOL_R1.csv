@@ -1,0 +1,23 @@
+Part,Value,Mouser Part #,Quantity,Description,Package Type,Placement,Top/Bottom
+ESP32-WROOM,N/A,356-ESP-WROOM-32,1,ESP32 MCU,N/A,SMD,Top
+OPA344,N/A,595-OPA344NA/3K,1,Opamp,SOT-23-5,SMD,Top
+I2C EEPROM,512 kbit,863-CAT24C512WI-GT3,1,EEPROM,SOIC-8,SMD,Top
+Voltage Regulator,3.3V,998-MIC5205-3.3YM5TR,1,VReg,SOT-23-5,SMD,Top
+Battery Charger,N/A,700-MAX1555EZK+T,1,Charger,SOT-23-5,SMD,Top
+MOSFET,N/A,512-2N7002,2,MOSFET,SOT-23-3,SMD,Top
+Waterproof Case,N/A,546-RP1065,1,Case,N/A,N/A,N/A
+Solar Panel,0.5W,713-313070004,1,Solar Panel,N/A,N/A,N/A
+Panel Mount LED,N/A,593-L65DG2L,1,LED,N/A,N/A,N/A
+LED O-Ring,N/A,593-SPC301,1,ORing,N/A,N/A,N/A
+Ceramic Decouple Capacitor,1 uF,710-885012107015,5,Capacitor,0805,SMD,Top
+Battery Holder,N/A,534-54,2,Battery Holder,N/A,Through Hole,Bottom
+Zener Diode,6.8V,821-BZX55B6V8R0G,1,Clamp diode,Axial,Through Hole ,Top
+Solar Panel Connector,2mm pitch,474-PRT-09749,1,Connector,N/A,Through Hole,Top
+"Sense Resistor, 1%",0.75 Ohm,71-RCWH0805R750FKEA,1,Resistor,0805,SMD,Top
+Resistor,5.1 Ohm,603-RT0603DRD075R1L,1,Resistor,0603,SMD,Top
+I2C Pullup Resistor,4.7 kOhm,603-AC0603FR-074K7L,2,Resistor,0603,SMD,Top
+Resistor,330 Ohm,603-RC0603FR-13330RL,3,Resistor,0603,SMD,Top
+"Resistor, 0.5%",47 kOhm,754-RR0816P-473D,2,Resistor,0603,SMD,Top
+"Resistor, 0.5%",15 kOhm,754-RR0816P-153D,1,Resistor,0603,SMD,Top
+"Resistor, 0.5%",100 kOhm,754-RR0816P-104D,1,Resistor,0603,SMD,Top
+"Resistor, 0.5%",1 kOhm,754-RR0816P-102D,1,Resistor,0603,SMD,Top
