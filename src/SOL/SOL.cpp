@@ -32,6 +32,10 @@ SOFTWARE.
 #include <Arduino.h>
 #include <Wire.h>
 #include <WiFi.h>
+#include <WebServer.h>
+#include <DNSServer.h>
+#include <WiFiManager.h>          //https://github.com/tzapu/WiFiManager
+
 
 #include "SOL.h"
 
@@ -83,7 +87,6 @@ void SOL_begin()
 	// TODO allow wakeup from deepsleep
 	touchAttachInterrupt(TOUCH_PIN, SOL_handletouch, 40); // TODO set threshold intelligently?
 
-	delay(10);
 	#ifdef SOL_DEBUG
 	Serial.println("Starting up");
 	#endif
@@ -100,7 +103,6 @@ void SOL_task()
 	#endif
 
 	// TODO better way to sense touch interrupt?
-	delay(10);
 	if(touched == 1)
 	{
 		SOL_startProvisioning();
@@ -265,162 +267,32 @@ uint8_t SOL_connectToWiFi(uint16_t timeout)
  */
 void SOL_startProvisioning(void)
 {
-	// TODO this is awful right now...and insecure
-	#ifdef SOL_DEBUG
-	Serial.println("Touch sensed, starting softAP");
-	#endif
+	WiFiManager wifiManager;
 
+	// Create SSID with ID
+	String provision_ssid = "SOL " + String(device_ID);
 
-	String net_ssid, net_pswd;
-	WiFiServer server(80);
-	
-	// Set up without password
-	const char *AP_ssid = "SOL";
-	WiFi.softAP(AP_ssid);
-	delay(10);
-	server.begin();
+	// Set a timeout
+	wifiManager.setTimeout(120);
+	if (wifiManager.startConfigPortal(provision_ssid.c_str())) {
 
-	delay(10);
+		// Get the new network information and save it
+		String connected_ssid = wifiManager.getSSID();
+		String connected_pswd = wifiManager.getPassword();
 
-	#ifdef SOL_DEBUG
-	// Print the IP address
-  	Serial.println("IP address: ");
-  	Serial.println(WiFi.softAPIP());
-	#endif
+		uint8_t len_ssid = connected_ssid.length();
+		uint8_t len_pswd = connected_pswd.length();
 
-	long start_time = millis();
-	uint8_t finished = 0;
-	while( ( (millis() - start_time) < PROVISION_TIMEOUT * 1000) && !finished)
-	{
-		delay(1);
+		SOL_writeEEPROMByte(EEPROM_ADDRESS_WIFI_PSWD_LENGTH, len_pswd);
+		SOL_writeEEPROMByte(EEPROM_ADDRESS_WIFI_SSID_LENGTH, len_ssid);
 
-		WiFiClient client = server.available();   // listen for incoming clients
+		SOL_writeEEPROMNByte(EEPROM_ADDRESS_WIFI_PSWD_START, (uint8_t *) connected_pswd.c_str(), len_pswd);
+		SOL_writeEEPROMNByte(EEPROM_ADDRESS_WIFI_SSID_START, (uint8_t *) connected_ssid.c_str(), len_ssid);
 
-		if (client) {                             // if you get a client,
-		    String current_line = "";                // make a String to hold incoming data from the client
-		    net_ssid = "";
-		    net_pswd = "";
-		    uint8_t ssid_state = 0;
-		    uint8_t pswd_state = 0;
+		// Indicate wifi credentials available
+		SOL_writeEEPROMByte(EEPROM_ADDRESS_WIFI_CREDENTIALS_AVAILABLE, (uint8_t) 1);
 
-		    // loop while the client's connected
-		    while (client.connected() && ( (millis() - start_time) < PROVISION_TIMEOUT * 1000) && !finished) 
-		    {   
-		      	if (client.available()) 
-		      	{             // if there's bytes to read from the client,
-		        	char c = client.read();             // read a byte, then
-
-		        	if (c == '\n') 
-		        	{              
-
-		          		// if the current line is blank, you got two newline characters in a row.
-		          		// that's the end of the client HTTP request, so send a response:
-		          		if (current_line.length() == 0) 
-		          		{
-		            		// HTTP headers always start with a response code (e.g. HTTP/1.1 200 OK)
-		            		// and a content-type so the client knows what's coming, then a blank line:
-		            		client.println("HTTP/1.1 200 OK");
-		            		client.println("Content-type:text/html");
-		            		client.println();
-
-		            		// the content of the HTTP response follows the header:
-		            		client.print("<html><body><form action='' method='GET'>Please provide your WiFi SSID and password: <br>");
-		            		client.print("SSID:<input type='text' name='SSID' placeholder='SSID (network name)'><br>");
-		            		client.print("Password:<input type='password' name='PASSWORD' placeholder='password'><br>");
-		            		client.print("<input type='submit' name='SUBMIT' value='Submit'></form>");
-
-		            		// The HTTP response ends with another blank line:
-				            client.println();
-		            		// break out of the while loop:
-		            		break;
-		          		} else 
-		          		{    
-		          			// if you got a newline, then clear currentLine:
-		            		current_line = "";
-		          		}
-		        	} else if (c != '\r') 
-		        	{ 
-		          		current_line += c;      // add it to the end of the currentLine
-		        	}
-		        
-		        	// SSID assembly
-		        	if(ssid_state == 1 && current_line.endsWith("&"))
-		        	{
-		          		// Stop assembling ssid
-		          		ssid_state = 2;
-		        	}
-		        	if(ssid_state == 1){  net_ssid += c;}
-		        	if(current_line.endsWith("SSID="))
-		        	{
-		          		// Start assembling SSID
-		          		ssid_state = 1;
-		        	}		        	
-
-		        	// PASSWORD assembly     
-		        	if(pswd_state == 1 && current_line.endsWith("&"))
-		        	{
-		          		// Stop assembling ssid
-		          		pswd_state = 2;
-		        	}   
-		        	if(pswd_state == 1){  net_pswd += c;}
-		        	if(current_line.endsWith("PASSWORD="))
-		        	{
-		          		// Start assembling password
-		          		pswd_state = 1;
-		        	}
-
-		        	if(pswd_state == 2 && ssid_state == 2)
-		        	{
-
-		        		#ifdef SOL_DEBUG
-		        		Serial.print("SSID: ");
-          				Serial.println(net_ssid);
-          				Serial.print("PSWD: ");
-          				Serial.println(net_pswd);
-		        		#endif
-
-		        		// TODO test password and ssid first, request retry from user
-		        		// TODO handle if inputs too long
-		        		// Save password and ssid
-		        		uint8_t len_ssid = net_ssid.length();
-		        		uint8_t len_pswd = net_pswd.length();
-
-		        		#ifdef SOL_DEBUG
-		        		Serial.print("SSID length: ");
-          				Serial.println(len_ssid);
-          				Serial.print("PSWD length: ");
-          				Serial.println(len_pswd);
-		        		#endif
-
-		        		SOL_writeEEPROMByte(EEPROM_ADDRESS_WIFI_PSWD_LENGTH, len_pswd);
-		        		SOL_writeEEPROMByte(EEPROM_ADDRESS_WIFI_SSID_LENGTH, len_ssid);
-
-		        		SOL_writeEEPROMNByte(EEPROM_ADDRESS_WIFI_PSWD_START, (uint8_t *) net_pswd.c_str(), len_pswd);
-		        		SOL_writeEEPROMNByte(EEPROM_ADDRESS_WIFI_SSID_START, (uint8_t *) net_ssid.c_str(), len_ssid);
-
-		        		// Indicate wifi credentials available
-		        		SOL_writeEEPROMByte(EEPROM_ADDRESS_WIFI_CREDENTIALS_AVAILABLE, (uint8_t) 1);
-
-		        		#ifdef SOL_DEBUG
-		        		Serial.print("SSID length: ");
-          				Serial.println(len_ssid);
-          				Serial.print("PSWD length: ");
-          				Serial.println(len_pswd);
-		        		#endif
-
-		        		// Exit
-		        		client.stop();
-		        		finished = 1;
-		        	}
-		      	}
-		    }
-		    // close the connection:
-		    client.stop();
-		}
 	}
-
-	WiFi.disconnect();
-    WiFi.mode(WIFI_STA);
 
 	#ifdef SOL_DEBUG
 	Serial.println("Provisioned");
@@ -468,7 +340,6 @@ void SOL_upload(void)
 
 		// Upload
 		SOL_uploadDataPacket(&data);
-		delay(100);
 	}
 
 	// Reset last storage address
@@ -732,7 +603,6 @@ uint8_t SOL_readEEPROMByte(uint16_t address)
   Wire.write((address >> 8)); // MSB
   Wire.write((address & 0xFF)); // LSB
   Wire.endTransmission();
-  delay(5); // TODO is this necessary?
   Wire.requestFrom(EEPROM_ADDRESS, 1);
   return Wire.read();
 }
